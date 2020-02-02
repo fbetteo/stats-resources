@@ -1,6 +1,6 @@
 
 library(tidyverse)
-
+library(pROC)
 # diamonds is in ggplot2
 
 
@@ -36,8 +36,17 @@ fit = as.data.frame(predict(mod, df, type = "response")) %>%
 table(fit %>%
         select(clase_train, clase_pred))
 
-summary(df)
- 
+
+diamond_roc = roc(fit$clase_train, fit$pred,
+                  plot = TRUE,
+                  show.thres=TRUE,
+                  print.auc = TRUE,
+                  show.thres=TRUE,
+                  print.thres = c(0.30,0.35, 0.40, 0.45,0.48, 0.50,0.55, 0.60),
+                  print.thres.col = "blue"
+                  )
+
+
 # RandomForest ----
 
 rfmod = randomForest::randomForest(cut ~ ., data = df, importance = TRUE)
