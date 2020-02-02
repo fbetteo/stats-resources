@@ -60,3 +60,9 @@ table(fitRF %>%
         select(cut, pred))
 
 randomForest::importance(rfmod)
+
+# SVM
+
+library(kernlab)
+
+svmmod = ksvm()
