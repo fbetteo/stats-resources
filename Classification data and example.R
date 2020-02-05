@@ -56,13 +56,54 @@ fitRF = as.data.frame(predict(rfmod, df)) %>%
   cbind.data.frame(df$cut) %>%
   rename(cut = 'df$cut') 
 
-table(fitRF %>%
+confusion_rf = table(fitRF %>%
         select(cut, pred))
+
+# overfiteado al palo, clasifica casi perfecto train
+rf_metrics = yardstick::metrics(fitRF, cut, pred)
 
 randomForest::importance(rfmod)
 
-# SVM
+# SVM ----
 
 library(kernlab)
 
-svmmod = ksvm()
+svmmod = ksvm(cut ~ ., data = df)
+
+
+svmkernels = list("rbfdot","polydot", "vanilladot", "tanhdot", "besseldot", "splinedot")
+
+# for fastest computation
+df_trial = df[,] # df[1:500,]
+
+# extract any metric from "yardstick::metrics"
+get_metric = function(x,metric){
+  x %>%
+    filter(.metric == {metric}) %>%
+    select(.estimate) %>%
+    pull()
+}
+
+
+# run SVM for each kind of kernel
+# predict on train
+# add classification metrics
+# extract metric as variable
+svmkernels2 = svmkernels %>%
+  unlist() %>%
+  as.data.frame() %>%
+  setNames("kernel") %>%
+  mutate(model = map(svmkernels, ~ ksvm(cut ~ ., data = df_trial, kernel = .x))) %>%
+  mutate(prediction = map(model, ~predict(.x, df_trial) %>%
+                            cbind.data.frame(df_trial$cut) %>%
+                            setNames(c("prediction","truth")))) %>%
+  mutate(metrics = map(prediction, ~ yardstick::metrics(.x, truth, prediction))) %>%
+  mutate(accuracy = unlist(map(metrics, ~ get_metric(.x, "accuracy"))))
+         
+
+# plotting accuracy
+ggplot(data = svmkernels2) + 
+  geom_col(aes(x =fct_reorder(kernel, accuracy), y =accuracy)) +
+  coord_flip()
+  
+
